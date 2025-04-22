@@ -20,7 +20,7 @@ new Controls(camera, canvas);
 const scene = new Scene(gl, camera);
 scene.setBackground(new Skybox(gl));
 
-const ground = new Ground(gl);
+const ground = new Ground(gl, "textures/ground.jpg");
 scene.addObject(ground);
 
 function render(time) {

@@ -24,7 +24,12 @@ export class Scene {
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    if (this.background) this.background.draw();
+    const viewMatrix = this.camera.getViewMatrix();
+    const projectionMatrix = this.camera.getProjectionMatrix();
+
+    if (this.background) {
+      this.background.draw(viewMatrix, projectionMatrix, time);
+    }
 
     for (const obj of this.objects) {
       if (obj.draw.length === 2) {

@@ -2,15 +2,17 @@ import { mat4 } from "https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/esm/index.js"
 
 const vertexSource = `
   attribute vec3 a_position;
+  attribute vec2 a_texcoord;
+
+  varying vec2 v_texcoord;
+
   uniform mat4 u_model;
   uniform mat4 u_view;
   uniform mat4 u_proj;
 
-  varying vec3 v_pos;
-
   void main() {
     vec4 worldPos = u_model * vec4(a_position, 1.0);
-    v_pos = worldPos.xyz;
+    v_texcoord = a_texcoord;
     gl_Position = u_proj * u_view * worldPos;
   }
 `;
@@ -18,87 +20,53 @@ const vertexSource = `
 const fragmentSource = `
   precision mediump float;
 
-varying vec3 v_pos;
-uniform float u_time;
+  varying vec2 v_texcoord;
+  uniform sampler2D u_texture;
 
-float hash(vec2 p) {
-  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
-}
-
-float noise(vec2 p) {
-  vec2 i = floor(p);
-  vec2 f = fract(p);
-  float a = hash(i);
-  float b = hash(i + vec2(1.0, 0.0));
-  float c = hash(i + vec2(0.0, 1.0));
-  float d = hash(i + vec2(1.0, 1.0));
-  vec2 u = f * f * (3.0 - 2.0 * f);
-  return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
-}
-
-float grass(vec2 uv, float time, out float randomColorFactor) {
-  float density = 120.0;
-  uv *= density;
-
-  float wind = sin(uv.x * 0.1 + time * 1.5) * 0.2;
-  uv.y += wind;
-
-  vec2 cell = floor(uv);
-  vec2 local = fract(uv);
-
-  float rnd = hash(cell);
-  randomColorFactor = rnd; // передаём в цвет
-
-  float angle = rnd * 6.2831;
-  float s = sin(angle);
-  float c = cos(angle);
-  local = mat2(c, -s, s, c) * (local - 0.5) + 0.5;
-
-  float blade = smoothstep(0.4, 0.5, abs(local.x - 0.5)) *
-                smoothstep(0.0, 0.05 + rnd * 0.2, local.y);
-
-  return 1.0 - blade;
-}
-
-void main() {
-  vec2 uv = v_pos.xz * 0.3;
-
-  float colorVar = 0.0;
-  float g = grass(uv, u_time, colorVar); // передаём ссылку на рандом
-
-  // базовый цвет и вариации
-  vec3 base1 = vec3(0.2, 0.4, 0.3); // яркая трава
-  vec3 base2 = vec3(0.1, 0.5, 0.2); // тёмная
-  vec3 base3 = vec3(0.3, 0.3, 0.4); // светлая
-
-  // Смешиваем по цветовой случайности
-  vec3 randomColor = mix(base1, base2, smoothstep(0.2, 0.8, colorVar));
-  randomColor = mix(randomColor, base3, sin(colorVar * 10.0 + u_time * 0.5) * 0.5 + 0.5);
-
-  // затемняем по форме травы (g)
-  vec3 final = mix(randomColor * 0.5, randomColor, g);
-
-  gl_FragColor = vec4(final, 1.0);
-}
-
-
+  void main() {
+    gl_FragColor = texture2D(u_texture, v_texcoord);
+  }
 `;
 
 export class Ground {
-  constructor(gl) {
+  constructor(gl, textureUrl) {
     this.gl = gl;
     this.modelMatrix = mat4.create();
 
-    // Плоскость (2 треугольника)
+    // Позиции (x, y, z)
     const positions = new Float32Array([
-      -20, 0, -20, 20, 0, -20, 20, 0, 20, -20, 0, 20,
+      -2,
+      0,
+      -2, // 0
+      2,
+      0,
+      -2, // 1
+      2,
+      0,
+      2, // 2
+      -2,
+      0,
+      2, // 3
     ]);
+
+    // Текстурные координаты (u, v)
+    const texCoords = new Float32Array([
+      0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0,
+    ]);
+
     const indices = new Uint16Array([0, 1, 2, 2, 3, 0]);
 
+    // Буфер вершин
     this.vertexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
 
+    // Буфер текстурных координат
+    this.texCoordBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, texCoords, gl.STATIC_DRAW);
+
+    // Буфер индексов
     this.indexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
@@ -109,12 +77,30 @@ export class Ground {
     this.program = this.createProgram(gl, vertexSource, fragmentSource);
     this.attribLocations = {
       position: gl.getAttribLocation(this.program, "a_position"),
+      texcoord: gl.getAttribLocation(this.program, "a_texcoord"),
     };
     this.uniformLocations = {
       model: gl.getUniformLocation(this.program, "u_model"),
       view: gl.getUniformLocation(this.program, "u_view"),
       proj: gl.getUniformLocation(this.program, "u_proj"),
-      time: gl.getUniformLocation(this.program, "u_time"),
+      texture: gl.getUniformLocation(this.program, "u_texture"),
+    };
+
+    // Загрузка текстуры
+    this.texture = gl.createTexture();
+    const image = new Image();
+    image.src = textureUrl;
+    image.onload = () => {
+      gl.bindTexture(gl.TEXTURE_2D, this.texture);
+      gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGBA,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        image
+      );
+      gl.generateMipmap(gl.TEXTURE_2D);
     };
   }
 
@@ -137,7 +123,6 @@ export class Ground {
     gl.attachShader(program, vs);
     gl.attachShader(program, fs);
     gl.linkProgram(program);
-
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
       console.error(gl.getProgramInfoLog(program));
     }
@@ -145,10 +130,11 @@ export class Ground {
     return program;
   }
 
-  draw(camera, time) {
+  draw(camera) {
     const gl = this.gl;
     gl.useProgram(this.program);
 
+    // Позиции
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
     gl.enableVertexAttribArray(this.attribLocations.position);
     gl.vertexAttribPointer(
@@ -160,6 +146,19 @@ export class Ground {
       0
     );
 
+    // Текстурные координаты
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer);
+    gl.enableVertexAttribArray(this.attribLocations.texcoord);
+    gl.vertexAttribPointer(
+      this.attribLocations.texcoord,
+      2,
+      gl.FLOAT,
+      false,
+      0,
+      0
+    );
+
+    // Матрицы
     gl.uniformMatrix4fv(this.uniformLocations.model, false, this.modelMatrix);
     gl.uniformMatrix4fv(this.uniformLocations.view, false, camera.viewMatrix);
     gl.uniformMatrix4fv(
@@ -167,8 +166,13 @@ export class Ground {
       false,
       camera.projectionMatrix
     );
-    gl.uniform1f(this.uniformLocations.time, time);
 
+    // Текстура
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, this.texture);
+    gl.uniform1i(this.uniformLocations.texture, 0);
+
+    // Отрисовка
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
     gl.drawElements(gl.TRIANGLES, this.vertexCount, gl.UNSIGNED_SHORT, 0);
   }

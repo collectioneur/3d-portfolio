@@ -8,7 +8,7 @@ export class Controls {
     this.camera = camera;
     this.canvas = canvas;
 
-    this.orbitRadius = 6;
+    this.orbitRadius = 10;
     this.azimuth = 0;
     this.elevation = 0.3;
 
@@ -61,7 +61,7 @@ export class Controls {
       (e) => {
         e.preventDefault();
         this.orbitRadius += e.deltaY * 0.01;
-        this.orbitRadius = Math.max(2, Math.min(20, this.orbitRadius));
+        this.orbitRadius = Math.max(1, Math.min(10, this.orbitRadius));
         this.updateCameraPosition();
       },
       { passive: false }

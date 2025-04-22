@@ -5,7 +5,7 @@ import {
 
 export class Camera {
   constructor(canvas) {
-    this.position = vec3.fromValues(0, 2, 6);
+    this.position = vec3.fromValues(0, 2, 0);
     this.target = vec3.fromValues(0, 0, 0);
     this.up = vec3.fromValues(0, 1, 0);
 
@@ -28,5 +28,13 @@ export class Camera {
       0.1,
       100
     );
+  }
+
+  getViewMatrix() {
+    return this.viewMatrix;
+  }
+
+  getProjectionMatrix() {
+    return this.projectionMatrix;
   }
 }
