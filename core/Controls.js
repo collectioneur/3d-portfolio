@@ -8,9 +8,9 @@ export class Controls {
     this.camera = camera;
     this.canvas = canvas;
 
-    this.orbitRadius = 10;
-    this.azimuth = 0;
-    this.elevation = 0.3;
+    this.orbitRadius = 0.4;
+    this.azimuth = -Math.PI / 2;
+    this.elevation = -Math.PI / 2;
 
     this.isDragging = false;
     this.lastX = 0;
@@ -60,8 +60,11 @@ export class Controls {
       "wheel",
       (e) => {
         e.preventDefault();
-        this.orbitRadius += e.deltaY * 0.01;
-        this.orbitRadius = Math.max(1, Math.min(10, this.orbitRadius));
+        this.camera.position[1] += e.deltaY * 0.01; // вверх/вниз
+        this.camera.position[1] = Math.max(
+          0.3,
+          Math.min(3.0, this.camera.position[1])
+        );
         this.updateCameraPosition();
       },
       { passive: false }
@@ -69,13 +72,20 @@ export class Controls {
   }
 
   updateCameraPosition() {
-    const x =
-      this.orbitRadius * Math.sin(this.azimuth) * Math.cos(this.elevation);
-    const y = this.orbitRadius * Math.sin(this.elevation);
-    const z =
-      this.orbitRadius * Math.cos(this.azimuth) * Math.cos(this.elevation);
+    const eye = this.camera.position;
 
-    vec3.set(this.camera.position, x, y, z);
+    // Вычисляем направление взгляда из азимута и возвышения
+    const dir = vec3.fromValues(
+      -Math.sin(this.azimuth) * Math.cos(this.elevation),
+      Math.sin(this.elevation),
+      Math.cos(this.azimuth) * Math.cos(this.elevation)
+    );
+
+    // Устанавливаем target = position + direction
+    const target = vec3.create();
+    vec3.add(target, eye, dir);
+    vec3.copy(this.camera.target, target);
+
     this.camera.updateViewMatrix();
   }
 }

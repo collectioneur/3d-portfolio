@@ -29,51 +29,34 @@ const fragmentSource = `
 `;
 
 export class Ground {
-  constructor(gl, textureUrl) {
+  constructor(gl, textureImage, { vertices, texCoords, indices }) {
     this.gl = gl;
     this.modelMatrix = mat4.create();
-
-    // Позиции (x, y, z)
-    const positions = new Float32Array([
-      -2,
-      0,
-      -2, // 0
-      2,
-      0,
-      -2, // 1
-      2,
-      0,
-      2, // 2
-      -2,
-      0,
-      2, // 3
-    ]);
-
-    // Текстурные координаты (u, v)
-    const texCoords = new Float32Array([
-      0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0,
-    ]);
-
-    const indices = new Uint16Array([0, 1, 2, 2, 3, 0]);
-
-    // Буфер вершин
+    mat4.scale(this.modelMatrix, this.modelMatrix, [100, 100, 100]);
+    mat4.translate(this.modelMatrix, this.modelMatrix, [-0.5, 0, 0]);
+    // === ВЕРШИНЫ ===
     this.vertexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
-    // Буфер текстурных координат
+    // === ТЕКСТУРНЫЕ КООРДИНАТЫ ===
     this.texCoordBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, texCoords, gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texCoords), gl.STATIC_DRAW);
 
-    // Буфер индексов
+    // === ИНДЕКСЫ ===
+    // gl.getExtension("OES_element_index_uint");
     this.indexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+    gl.bufferData(
+      gl.ELEMENT_ARRAY_BUFFER,
+      new Uint32Array(indices),
+      gl.STATIC_DRAW
+    );
 
     this.vertexCount = indices.length;
 
-    // Компиляция шейдеров
+    // === ШЕЙДЕРЫ ===
     this.program = this.createProgram(gl, vertexSource, fragmentSource);
     this.attribLocations = {
       position: gl.getAttribLocation(this.program, "a_position"),
@@ -86,22 +69,18 @@ export class Ground {
       texture: gl.getUniformLocation(this.program, "u_texture"),
     };
 
-    // Загрузка текстуры
+    // === ТЕКСТУРА ===
     this.texture = gl.createTexture();
-    const image = new Image();
-    image.src = textureUrl;
-    image.onload = () => {
-      gl.bindTexture(gl.TEXTURE_2D, this.texture);
-      gl.texImage2D(
-        gl.TEXTURE_2D,
-        0,
-        gl.RGBA,
-        gl.RGBA,
-        gl.UNSIGNED_BYTE,
-        image
-      );
-      gl.generateMipmap(gl.TEXTURE_2D);
-    };
+    gl.bindTexture(gl.TEXTURE_2D, this.texture);
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      0,
+      gl.RGBA,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      textureImage
+    );
+    gl.generateMipmap(gl.TEXTURE_2D);
   }
 
   createProgram(gl, vsSource, fsSource) {
@@ -134,7 +113,7 @@ export class Ground {
     const gl = this.gl;
     gl.useProgram(this.program);
 
-    // Позиции
+    // Активируем и связываем буфер вершин
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
     gl.enableVertexAttribArray(this.attribLocations.position);
     gl.vertexAttribPointer(
@@ -146,7 +125,7 @@ export class Ground {
       0
     );
 
-    // Текстурные координаты
+    // Активируем и связываем буфер текстурных координат
     gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer);
     gl.enableVertexAttribArray(this.attribLocations.texcoord);
     gl.vertexAttribPointer(
@@ -158,22 +137,28 @@ export class Ground {
       0
     );
 
-    // Матрицы
+    // Устанавливаем uniform-переменные для матриц
     gl.uniformMatrix4fv(this.uniformLocations.model, false, this.modelMatrix);
-    gl.uniformMatrix4fv(this.uniformLocations.view, false, camera.viewMatrix);
+    gl.uniformMatrix4fv(
+      this.uniformLocations.view,
+      false,
+      camera.getViewMatrix()
+    );
     gl.uniformMatrix4fv(
       this.uniformLocations.proj,
       false,
-      camera.projectionMatrix
+      camera.getProjectionMatrix()
     );
 
-    // Текстура
+    // Активируем текстуру
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.texture);
     gl.uniform1i(this.uniformLocations.texture, 0);
 
-    // Отрисовка
+    // Отрисовываем объект
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
-    gl.drawElements(gl.TRIANGLES, this.vertexCount, gl.UNSIGNED_SHORT, 0);
+    gl.drawElements(gl.TRIANGLES, this.vertexCount, gl.UNSIGNED_INT, 0);
   }
+
+  // ... draw() остаётся без изменений ...
 }
