@@ -63,7 +63,7 @@ export class Controls {
         this.camera.position[1] += e.deltaY * 0.01; // вверх/вниз
         this.camera.position[1] = Math.max(
           0.3,
-          Math.min(3.0, this.camera.position[1])
+          Math.min(200.0, this.camera.position[1])
         );
         this.updateCameraPosition();
       },

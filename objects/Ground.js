@@ -32,8 +32,6 @@ export class Ground {
   constructor(gl, textureImage, { vertices, texCoords, indices }) {
     this.gl = gl;
     this.modelMatrix = mat4.create();
-    mat4.scale(this.modelMatrix, this.modelMatrix, [100, 100, 100]);
-    mat4.translate(this.modelMatrix, this.modelMatrix, [-0.5, 0, 0]);
     // === ВЕРШИНЫ ===
     this.vertexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
@@ -81,6 +79,14 @@ export class Ground {
       textureImage
     );
     gl.generateMipmap(gl.TEXTURE_2D);
+  }
+
+  translate(x, y, z) {
+    mat4.translate(this.modelMatrix, this.modelMatrix, [x, y, z]);
+  }
+
+  scale(x, y, z) {
+    mat4.scale(this.modelMatrix, this.modelMatrix, [x, y, z]);
   }
 
   createProgram(gl, vsSource, fsSource) {
