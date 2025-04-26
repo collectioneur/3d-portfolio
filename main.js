@@ -25,7 +25,38 @@ const scene = new Scene(gl, camera);
 scene.setBackground(new Skybox(gl));
 
 // createObject("../objects/baobab.glb", scene, gl, [1, 1, 1], [-40.4, 0, 0.5]);
-createObject("../objects/terrain2.glb", scene, gl, [1, 1, 1], [1, 1, 1]);
+createObject(
+  "../objects/terrain1.glb",
+  scene,
+  gl,
+  [1, 1, 1],
+  [0, 0, 0],
+  [0, 0, 0]
+);
+let positionsBaobab = [
+  [-1.07, -1.18379, 13.0582],
+  [1.94173, -0.883373, 2.13635],
+  [-4.41552, -0.46294, 26.4603],
+  [13.168, -0.758571, 47.3939],
+];
+for (let i = 0; i < positionsBaobab.length; i++) {
+  createObject(
+    "../objects/baobab1.glb",
+    scene,
+    gl,
+    [1, 1, 1],
+    positionsBaobab[i],
+    [0, 0, 0]
+  );
+}
+createObject(
+  "../objects/me2.glb",
+  scene,
+  gl,
+  [1, 1, 1],
+  [1, -0.7, 1],
+  [90, 90, 0]
+);
 function render(time) {
   scene.render(time * 0.001);
   requestAnimationFrame(render);

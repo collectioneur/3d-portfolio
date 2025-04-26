@@ -81,6 +81,12 @@ export class Ground {
     gl.generateMipmap(gl.TEXTURE_2D);
   }
 
+  rotate(x, y, z) {
+    mat4.rotateX(this.modelMatrix, this.modelMatrix, x);
+    mat4.rotateY(this.modelMatrix, this.modelMatrix, y);
+    mat4.rotateZ(this.modelMatrix, this.modelMatrix, z);
+  }
+
   translate(x, y, z) {
     mat4.translate(this.modelMatrix, this.modelMatrix, [x, y, z]);
   }

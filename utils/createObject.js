@@ -4,7 +4,7 @@ import { GLTFLoader } from "../core/GLTFLoader.js";
 
 const loader = new GLTFLoader();
 
-export const createObject = (link, scene, gl, scale, translate) => {
+export const createObject = (link, scene, gl, scale, translate, rotate) => {
   loader.load(
     link,
     (gltf) => {
@@ -39,6 +39,11 @@ export const createObject = (link, scene, gl, scale, translate) => {
         });
         ground.scale(scale[0], scale[1], scale[2]);
         ground.translate(translate[0], translate[1], translate[2]);
+        ground.rotate(
+          rotate[0] * (Math.PI / 180),
+          rotate[1] * (Math.PI / 180),
+          rotate[2] * (Math.PI / 180)
+        );
         scene.addObject(ground);
       });
     },
