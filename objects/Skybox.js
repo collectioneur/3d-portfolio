@@ -54,6 +54,38 @@ void main() {
     color.rgb *= mix(0.5, 2.0, twinkle); // изменяем яркость
   }
 
+  float horizonHeight = 0.0; 
+
+  
+  if (v_texCoord.y < 250.0) {
+    float x1 = 40.0 * sin(v_texCoord.x / 70.0 + u_time * 0.03);
+float x2 = 30.0 * sin(v_texCoord.x / 80.0 - u_time * 0.05 + 10.0);
+float x3 = -abs(60.0 * sin(v_texCoord.x / 100.0 + u_time * 0.01 + 5.0)) + 40.0;
+float profileX = max(x1, max(x2, x3));
+
+// рассчитываем точно такую же «цепь» по Z
+float z1 = 30.0 * sin(v_texCoord.z / 70.0 + u_time * 0.03);
+float z2 = 40.0 * sin(v_texCoord.z / 90.0 - u_time * 0.05 + 10.0);
+float z3 = -abs(60.0 * sin(v_texCoord.z / 120.0 + u_time * 0.01 + 5.0)) + 50.0;
+float profileZ = max(z1, max(z2, z3));
+
+    float mountainProfile = (v_texCoord.x == 1000.0 || v_texCoord.x == -1000.0 ? 0.0 : profileX) + (v_texCoord.z == 1000.0 || v_texCoord.z == -1000.0 ? 0.0 : profileZ) + 3.0 * rand(v_texCoord / 100.0) + 50.0;
+
+    // Чем ниже y, тем глубже в горы
+    if(v_texCoord.y < mountainProfile) {
+    float depth = mountainProfile - v_texCoord.y;
+    float alpha = smoothstep(0.0, 20.0, depth);
+    float t = clamp(depth / 50.0, 0.0, 1.0);
+    t = smoothstep(0.0, 1.0, t);
+    vec3 baseColor = vec3(0.05, 0.05, 0.05);
+
+    vec3 peakColor = vec3(0., 0., 0.);
+
+    // color.rgb = mix(baseColor, peakColor, t);
+    color.rgb = mix(color.rgb, peakColor, alpha);
+    }
+  }
+
   gl_FragColor = color;
 }
 

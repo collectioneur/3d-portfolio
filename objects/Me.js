@@ -9,9 +9,14 @@ const vertexSource = `
   uniform mat4 u_model;
   uniform mat4 u_view;
   uniform mat4 u_proj;
+  uniform float u_time;
 
   void main() {
   vec4 pos = vec4(a_position, 1.0);
+  if ((a_position.z > 0.16 || a_position.z < -0.16) && a_position.y > 0.16) {
+    pos.y += sin(u_time) * a_position.y * 0.1;
+    pos.z += sign(a_position.z) * abs(cos(u_time)) * a_position.y * 0.1;
+  }
     vec4 worldPos = u_model * pos;
     v_texcoord = a_texcoord;
     gl_Position = u_proj * u_view  * worldPos;
@@ -24,54 +29,13 @@ const fragmentSource = `
   varying vec2 v_texcoord;
   uniform sampler2D u_texture;
 
-  float random(vec2 st) {
-    return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
-}
-
   void main() {
-  float noise = random(v_texcoord * 100.0);
-  vec4 color = vec4(0.01, 0.03, 0.02, 1.0);
-  color.g += 0.05 * sin(10.0 * v_texcoord.x + 10.0 * v_texcoord.y);
-    gl_FragColor = color;
+    gl_FragColor = texture2D(u_texture, v_texcoord);
   }
 `;
 
-export class Ground {
-  constructor(gl) {
-    const vertices = [
-      -1.0,
-      0.0,
-      -1.0, // левый ближний угол
-      1.0,
-      0.0,
-      -1.0, // правый ближний угол
-      1.0,
-      0.0,
-      1.0, // правый дальний угол
-      -1.0,
-      0.0,
-      1.0, // левый дальний угол
-    ];
-
-    const texCoords = [
-      0.0,
-      0.0, // для первого угла
-      1.0,
-      0.0, // для второго угла
-      1.0,
-      1.0, // для третьего угла
-      0.0,
-      1.0, // для четвёртого угла
-    ];
-
-    const indices = [
-      0,
-      1,
-      2, // первый треугольник
-      0,
-      2,
-      3, // второй треугольник
-    ];
+export class Me {
+  constructor(gl, textureImage, { vertices, texCoords, indices }) {
     this.gl = gl;
     this.modelMatrix = mat4.create();
 
@@ -107,18 +71,40 @@ export class Ground {
     };
     this.texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, this.texture);
-    const whitePixel = new Uint8Array([23, 20, 22, 255]);
-    gl.texImage2D(
-      gl.TEXTURE_2D,
-      0,
-      gl.RGBA,
-      1,
-      1,
-      0,
-      gl.RGBA,
-      gl.UNSIGNED_BYTE,
-      whitePixel
-    );
+    if (textureImage) {
+      gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGBA,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        textureImage
+      );
+      gl.generateMipmap(gl.TEXTURE_2D);
+    } else {
+      const whitePixel = new Uint8Array([23, 56, 22, 255]);
+      gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGBA,
+        1,
+        1,
+        0,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        whitePixel
+      );
+    }
+  }
+
+  rotate(x, y, z) {
+    mat4.rotateX(this.modelMatrix, this.modelMatrix, x);
+    mat4.rotateY(this.modelMatrix, this.modelMatrix, y);
+    mat4.rotateZ(this.modelMatrix, this.modelMatrix, z);
+  }
+
+  translate(x, y, z) {
+    mat4.translate(this.modelMatrix, this.modelMatrix, [x, y, z]);
   }
 
   scale(x, y, z) {
@@ -157,6 +143,7 @@ export class Ground {
 
     const now = performance.now();
     const timeInSeconds = now / 1000.0;
+    // Активируем и связываем буфер вершин
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
     gl.enableVertexAttribArray(this.attribLocations.position);
     gl.vertexAttribPointer(
@@ -168,6 +155,7 @@ export class Ground {
       0
     );
 
+    // Активируем и связываем буфер текстурных координат
     gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer);
     gl.enableVertexAttribArray(this.attribLocations.texcoord);
     gl.vertexAttribPointer(

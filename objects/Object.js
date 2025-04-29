@@ -3,77 +3,73 @@ import { mat4 } from "https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/esm/index.js"
 const vertexSource = `
   attribute vec3 a_position;
   attribute vec2 a_texcoord;
+  attribute vec3 a_normal;
 
   varying vec2 v_texcoord;
+  varying vec3 v_normal;
 
   uniform mat4 u_model;
   uniform mat4 u_view;
   uniform mat4 u_proj;
+  uniform float u_time;
 
   void main() {
   vec4 pos = vec4(a_position, 1.0);
+  // if (a_position.y > 0.0) {
+  //   pos.x += sin(u_time) * a_position.y * 0.2;
+  //   pos.z += cos(u_time) * a_position.y * 0.1;
+  // }
     vec4 worldPos = u_model * pos;
     v_texcoord = a_texcoord;
+    v_normal = mat3(u_model) * a_normal;
     gl_Position = u_proj * u_view  * worldPos;
   }
 `;
+
+// const vertexSource = `
+//   attribute vec3 a_position;
+//   attribute vec2 a_texcoord;
+
+//   varying vec2 v_texcoord;
+
+//   uniform mat4 u_model;
+//   uniform mat4 u_view;
+//   uniform mat4 u_proj;
+
+//   void main() {
+//   vec4 pos = vec4(a_position, 1.0);
+//     vec4 worldPos = u_model * pos;
+//     v_texcoord = a_texcoord;
+//     gl_Position = u_proj * u_view  * worldPos;
+//   }
+// `;
 
 const fragmentSource = `
   precision mediump float;
 
   varying vec2 v_texcoord;
+  varying vec3 v_normal;
+  uniform vec3 u_reverseLightDirection;
   uniform sampler2D u_texture;
 
-  float random(vec2 st) {
-    return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
-}
-
   void main() {
-  float noise = random(v_texcoord * 100.0);
-  vec4 color = vec4(0.01, 0.03, 0.02, 1.0);
-  color.g += 0.05 * sin(10.0 * v_texcoord.x + 10.0 * v_texcoord.y);
-    gl_FragColor = color;
+   vec3 normal = normalize(v_normal);
+   vec3 reverseLightDirection = normalize(u_reverseLightDirection);
+   float light = dot(normal, reverseLightDirection);
+    if (light < 0.0) {
+      light = 0.0;
+}
+    gl_FragColor = texture2D(u_texture, v_texcoord);
+    // gl_FragColor.rgb *= light * 3.0;
+    gl_FragColor.rgb *= light * 3.0;
   }
 `;
 
-export class Ground {
-  constructor(gl) {
-    const vertices = [
-      -1.0,
-      0.0,
-      -1.0, // левый ближний угол
-      1.0,
-      0.0,
-      -1.0, // правый ближний угол
-      1.0,
-      0.0,
-      1.0, // правый дальний угол
-      -1.0,
-      0.0,
-      1.0, // левый дальний угол
-    ];
-
-    const texCoords = [
-      0.0,
-      0.0, // для первого угла
-      1.0,
-      0.0, // для второго угла
-      1.0,
-      1.0, // для третьего угла
-      0.0,
-      1.0, // для четвёртого угла
-    ];
-
-    const indices = [
-      0,
-      1,
-      2, // первый треугольник
-      0,
-      2,
-      3, // второй треугольник
-    ];
+export class Object {
+  constructor(gl, textureImage, { vertices, texCoords, indices, normals }) {
     this.gl = gl;
     this.modelMatrix = mat4.create();
+    this.reverseLightDirection = [-0.5, 1, 1];
 
     this.vertexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
@@ -91,12 +87,17 @@ export class Ground {
       gl.STATIC_DRAW
     );
 
+    this.normalBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.normalBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
     this.vertexCount = indices.length;
+    console.log(vertices);
 
     this.program = this.createProgram(gl, vertexSource, fragmentSource);
     this.attribLocations = {
       position: gl.getAttribLocation(this.program, "a_position"),
       texcoord: gl.getAttribLocation(this.program, "a_texcoord"),
+      normal: gl.getAttribLocation(this.program, "a_normal"),
     };
     this.uniformLocations = {
       model: gl.getUniformLocation(this.program, "u_model"),
@@ -104,21 +105,48 @@ export class Ground {
       proj: gl.getUniformLocation(this.program, "u_proj"),
       texture: gl.getUniformLocation(this.program, "u_texture"),
       time: gl.getUniformLocation(this.program, "u_time"),
+      reverseLightDirection: gl.getUniformLocation(
+        this.program,
+        "u_reverseLightDirection"
+      ),
     };
+
     this.texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, this.texture);
-    const whitePixel = new Uint8Array([23, 20, 22, 255]);
-    gl.texImage2D(
-      gl.TEXTURE_2D,
-      0,
-      gl.RGBA,
-      1,
-      1,
-      0,
-      gl.RGBA,
-      gl.UNSIGNED_BYTE,
-      whitePixel
-    );
+    if (textureImage) {
+      gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGBA,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        textureImage
+      );
+      gl.generateMipmap(gl.TEXTURE_2D);
+    } else {
+      const whitePixel = new Uint8Array([23, 56, 22, 255]);
+      gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGBA,
+        1,
+        1,
+        0,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        whitePixel
+      );
+    }
+  }
+
+  rotate(x, y, z) {
+    mat4.rotateX(this.modelMatrix, this.modelMatrix, x);
+    mat4.rotateY(this.modelMatrix, this.modelMatrix, y);
+    mat4.rotateZ(this.modelMatrix, this.modelMatrix, z);
+  }
+
+  translate(x, y, z) {
+    mat4.translate(this.modelMatrix, this.modelMatrix, [x, y, z]);
   }
 
   scale(x, y, z) {
@@ -157,6 +185,7 @@ export class Ground {
 
     const now = performance.now();
     const timeInSeconds = now / 1000.0;
+    // Активируем и связываем буфер вершин
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
     gl.enableVertexAttribArray(this.attribLocations.position);
     gl.vertexAttribPointer(
@@ -168,6 +197,18 @@ export class Ground {
       0
     );
 
+    // Активируем и связываем буфер нормалей
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.normalBuffer);
+    gl.enableVertexAttribArray(this.attribLocations.normal);
+    gl.vertexAttribPointer(
+      this.attribLocations.normal,
+      3,
+      gl.FLOAT,
+      false,
+      0,
+      0
+    );
+    // Активируем и связываем буфер текстурных координат
     gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer);
     gl.enableVertexAttribArray(this.attribLocations.texcoord);
     gl.vertexAttribPointer(
@@ -178,8 +219,11 @@ export class Ground {
       0,
       0
     );
-
     // Устанавливаем uniform-переменные для матриц
+    gl.uniform3fv(
+      this.uniformLocations.reverseLightDirection,
+      this.reverseLightDirection
+    );
     gl.uniformMatrix4fv(this.uniformLocations.model, false, this.modelMatrix);
     gl.uniformMatrix4fv(
       this.uniformLocations.view,

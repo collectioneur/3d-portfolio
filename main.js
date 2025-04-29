@@ -2,10 +2,11 @@ import { GLTFLoader } from "./core/GLTFLoader.js"; // <== теперь лока�
 
 import { Scene } from "./core/Scene.js";
 import { Camera } from "./core/Camera.js";
-import { Ground } from "./objects/Ground.js";
 import { Controls } from "./core/Controls.js";
 import { Skybox } from "./objects/Skybox.js";
-import { createObject } from "./utils/createObject.js";
+import { createObject, createObjectInstances } from "./utils/createObject.js";
+import { Object } from "./objects/Object.js";
+import { Ground } from "./objects/Ground.js";
 
 const canvas = document.getElementById("glcanvas");
 canvas.width = window.innerWidth;
@@ -24,39 +25,83 @@ new Controls(camera, canvas);
 const scene = new Scene(gl, camera);
 scene.setBackground(new Skybox(gl));
 
-// createObject("../objects/baobab.glb", scene, gl, [1, 1, 1], [-40.4, 0, 0.5]);
-createObject(
-  "../objects/terrain1.glb",
-  scene,
-  gl,
-  [1, 1, 1],
-  [0, 0, 0],
-  [0, 0, 0]
-);
-let positionsBaobab = [
-  [-1.07, -1.18379, 13.0582],
-  [1.94173, -0.883373, 2.13635],
-  [-4.41552, -0.46294, 26.4603],
-  [13.168, -0.758571, 47.3939],
-];
-for (let i = 0; i < positionsBaobab.length; i++) {
-  createObject(
-    "../objects/baobab1.glb",
-    scene,
-    gl,
-    [1, 1, 1],
-    positionsBaobab[i],
-    [0, 0, 0]
-  );
-}
+// createObject(
+//   "../objects/terrain1.glb",
+//   scene,
+//   gl,
+//   [1, 1, 1],
+//   [0, 0, 0],
+//   [0, 0, 0],
+//   0
+// );
+// createObject(
+//   "../objects/baobab1.glb",
+//   scene,
+//   gl,
+//   [1, 1, 1],
+//   [Math.random() * 1.0 - 0.5, 0, Math.random() * 1 - 0.5],
+//   [0, 0, 0],
+//   10
+// );
+// let positionsBaobab = [
+//   [-1.07, -1.18379, 13.0582],
+//   [1.94173, -0.883373, 2.13635],
+//   [-4.41552, -0.46294, 26.4603],
+//   [13.168, -0.758571, 47.3939],
+// ];
+// for (let i = 0; i < positionsBaobab.length; i++) {
+//   createObject(
+//     "../objects/baobab1.glb",
+//     scene,
+//     gl,
+//     [1, 1, 1],
+//     positionsBaobab[i],
+//     [0, 0, 0],
+//     0
+//   );
+// }
+const ground = new Ground(gl);
+ground.scale(50, 1, 50);
+scene.addObject(ground);
+
 createObject(
   "../objects/me2.glb",
   scene,
   gl,
   [1, 1, 1],
-  [1, -0.7, 1],
-  [90, 90, 0]
+  [1, 0.1, 1],
+  [90, 90, 0],
+  0
 );
+
+// createObject(
+//   "../objects/mountain.glb",
+//   scene,
+//   gl,
+//   [0.1, 0.1, 0.1],
+//   [-600, -50, 0],
+//   [-90, 0, 90],
+//   0
+// );
+createObject(
+  "../objects/grasss.glb",
+  scene,
+  gl,
+  [1, 1, 1],
+  [10, 0, 10],
+  [0, 0, 0],
+  100
+);
+createObject(
+  "../objects/baobab1.glb",
+  scene,
+  gl,
+  [1, 1, 1],
+  [3, 0, 3],
+  [0, 0, 0],
+  30
+);
+
 function render(time) {
   scene.render(time * 0.001);
   requestAnimationFrame(render);
