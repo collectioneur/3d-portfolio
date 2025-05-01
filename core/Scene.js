@@ -1,4 +1,5 @@
 import { mat4 } from "https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/esm/index.js";
+import { Ground } from "../objects/Ground.js";
 
 export class Scene {
   constructor(gl, camera) {
@@ -21,11 +22,11 @@ export class Scene {
 
   render(time) {
     const gl = this.gl;
-    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
     const viewMatrix = this.camera.getViewMatrix();
     const projectionMatrix = this.camera.getProjectionMatrix();
+
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     if (this.background) {
       this.background.draw(viewMatrix, projectionMatrix, time);
@@ -35,7 +36,7 @@ export class Scene {
       if (obj.draw.length === 2) {
         obj.draw(this.camera, time);
       } else {
-        obj.draw(this.camera);
+        obj.draw(this.camera, time / 1000.0);
       }
     }
   }

@@ -1,12 +1,28 @@
-import { GLTFLoader } from "./core/GLTFLoader.js"; // <== теперь локальный и рабочий
-
 import { Scene } from "./core/Scene.js";
 import { Camera } from "./core/Camera.js";
 import { Controls } from "./core/Controls.js";
 import { Skybox } from "./objects/Skybox.js";
-import { createObject, createObjectInstances } from "./utils/createObject.js";
+import { createObjectInstance } from "./utils/createObjectInstance.js";
 import { Object } from "./objects/Object.js";
 import { Ground } from "./objects/Ground.js";
+import {
+  fragmentSource as baobabFrag,
+  vertexSource as baobabVert,
+} from "./shaders/baobabShaders.js";
+import {
+  fragmentSource as grassFrag,
+  vertexSource as grassVert,
+} from "./shaders/grassShaders.js";
+import {
+  fragmentSource as meFrag,
+  vertexSource as meVert,
+} from "./shaders/meShaders.js";
+
+let seed = 4000;
+function random() {
+  let x = Math.sin(seed++) * 10000;
+  return x - Math.floor(x);
+}
 
 const canvas = document.getElementById("glcanvas");
 canvas.width = window.innerWidth;
@@ -22,85 +38,70 @@ gl.getExtension("OES_element_index_uint");
 
 const camera = new Camera(canvas);
 new Controls(camera, canvas);
+
 const scene = new Scene(gl, camera);
 scene.setBackground(new Skybox(gl));
 
-// createObject(
-//   "../objects/terrain1.glb",
-//   scene,
-//   gl,
-//   [1, 1, 1],
-//   [0, 0, 0],
-//   [0, 0, 0],
-//   0
-// );
-// createObject(
-//   "../objects/baobab1.glb",
-//   scene,
-//   gl,
-//   [1, 1, 1],
-//   [Math.random() * 1.0 - 0.5, 0, Math.random() * 1 - 0.5],
-//   [0, 0, 0],
-//   10
-// );
-// let positionsBaobab = [
-//   [-1.07, -1.18379, 13.0582],
-//   [1.94173, -0.883373, 2.13635],
-//   [-4.41552, -0.46294, 26.4603],
-//   [13.168, -0.758571, 47.3939],
-// ];
-// for (let i = 0; i < positionsBaobab.length; i++) {
-//   createObject(
-//     "../objects/baobab1.glb",
-//     scene,
-//     gl,
-//     [1, 1, 1],
-//     positionsBaobab[i],
-//     [0, 0, 0],
-//     0
-//   );
-// }
 const ground = new Ground(gl);
-ground.scale(50, 1, 50);
 scene.addObject(ground);
-
-createObject(
-  "../objects/me2.glb",
-  scene,
-  gl,
-  [1, 1, 1],
-  [1, 0.1, 1],
-  [90, 90, 0],
-  0
-);
-
-// createObject(
-//   "../objects/mountain.glb",
-//   scene,
-//   gl,
-//   [0.1, 0.1, 0.1],
-//   [-600, -50, 0],
-//   [-90, 0, 90],
-//   0
-// );
-createObject(
-  "../objects/grasss.glb",
-  scene,
-  gl,
-  [1, 1, 1],
-  [10, 0, 10],
-  [0, 0, 0],
-  100
-);
-createObject(
-  "../objects/baobab1.glb",
-  scene,
-  gl,
-  [1, 1, 1],
-  [3, 0, 3],
-  [0, 0, 0],
-  30
-);
+let baobab = [];
+(async () => {
+  baobab = await Object.loadFromGLTF(
+    gl,
+    "../models/baobab.glb",
+    baobabVert,
+    baobabFrag
+  );
+  for (let i = 0; i < 60; i++) {
+    let scale = random() * 0.2 + 0.9;
+    let x = random() * 200 - 100;
+    let z = random() * 200 - 100;
+    let rotate = random() * 360;
+    let instance = createObjectInstance(
+      baobab,
+      [x, 0, z],
+      [0, rotate, 0],
+      [scale, scale, scale]
+    );
+    for (let i = 0; i < instance.length; i++) {
+      scene.addObject(instance[i]);
+    }
+  }
+})();
+(async () => {
+  const grass = await Object.loadFromGLTF(
+    gl,
+    "../models/grass.glb",
+    grassVert,
+    grassFrag
+  );
+  for (let i = 0; i < 800; i++) {
+    let scale = 0.5;
+    let x = random() * 200 - 100;
+    let z = random() * 200 - 100;
+    let instance = createObjectInstance(
+      grass,
+      [x, 0, z],
+      [0, 0, 0],
+      [scale, scale, scale]
+    );
+    for (let i = 0; i < instance.length; i++) {
+      scene.addObject(instance[i]);
+    }
+  }
+})();
+(async () => {
+  const [me] = await Object.loadFromGLTF(
+    gl,
+    "../models/me.glb",
+    meVert,
+    meFrag
+  );
+  me.scale(1.0, 1.0, 1.0);
+  me.translate(1.0, 0.5, 1.0);
+  me.rotate(0, 90, 0);
+  scene.addObject(me);
+})();
 
 function render(time) {
   scene.render(time * 0.001);

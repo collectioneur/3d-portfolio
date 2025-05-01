@@ -21,16 +21,12 @@ export class ObjectInstance {
     mat4.rotateZ(this.modelMatrix, this.modelMatrix, z);
   }
 
-  draw(camera) {
+  draw(camera, timeInSeconds) {
     const gl = this.gl;
     const program = this.prototype.program;
 
     gl.useProgram(program);
 
-    const now = performance.now();
-    const timeInSeconds = now / 1000.0;
-
-    // Используем буферы оригинала
     gl.bindBuffer(gl.ARRAY_BUFFER, this.prototype.vertexBuffer);
     gl.enableVertexAttribArray(this.prototype.attribLocations.position);
     gl.vertexAttribPointer(

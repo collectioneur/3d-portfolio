@@ -1,6 +1,7 @@
 import { mat4 } from "https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/esm/index.js";
+import { GLTFLoader } from "../core/GLTFLoader.js";
 
-const vertexSource = `
+let vertexSource = `
   attribute vec3 a_position;
   attribute vec2 a_texcoord;
   attribute vec3 a_normal;
@@ -15,10 +16,6 @@ const vertexSource = `
 
   void main() {
   vec4 pos = vec4(a_position, 1.0);
-  // if (a_position.y > 0.0) {
-  //   pos.x += sin(u_time) * a_position.y * 0.2;
-  //   pos.z += cos(u_time) * a_position.y * 0.1;
-  // }
     vec4 worldPos = u_model * pos;
     v_texcoord = a_texcoord;
     v_normal = mat3(u_model) * a_normal;
@@ -26,25 +23,7 @@ const vertexSource = `
   }
 `;
 
-// const vertexSource = `
-//   attribute vec3 a_position;
-//   attribute vec2 a_texcoord;
-
-//   varying vec2 v_texcoord;
-
-//   uniform mat4 u_model;
-//   uniform mat4 u_view;
-//   uniform mat4 u_proj;
-
-//   void main() {
-//   vec4 pos = vec4(a_position, 1.0);
-//     vec4 worldPos = u_model * pos;
-//     v_texcoord = a_texcoord;
-//     gl_Position = u_proj * u_view  * worldPos;
-//   }
-// `;
-
-const fragmentSource = `
+let fragmentSource = `
   precision mediump float;
 
   varying vec2 v_texcoord;
@@ -60,16 +39,23 @@ const fragmentSource = `
       light = 0.0;
 }
     gl_FragColor = texture2D(u_texture, v_texcoord);
-    // gl_FragColor.rgb *= light * 3.0;
     gl_FragColor.rgb *= light * 3.0;
   }
 `;
 
 export class Object {
-  constructor(gl, textureImage, { vertices, texCoords, indices, normals }) {
+  constructor(
+    gl,
+    textureImage,
+    { vertices, texCoords, indices, normals },
+    vert,
+    frag
+  ) {
     this.gl = gl;
     this.modelMatrix = mat4.create();
     this.reverseLightDirection = [-0.5, 1, 1];
+    vertexSource = vert || vertexSource;
+    fragmentSource = frag || fragmentSource;
 
     this.vertexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
@@ -185,7 +171,7 @@ export class Object {
 
     const now = performance.now();
     const timeInSeconds = now / 1000.0;
-    // Активируем и связываем буфер вершин
+
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
     gl.enableVertexAttribArray(this.attribLocations.position);
     gl.vertexAttribPointer(
@@ -197,7 +183,6 @@ export class Object {
       0
     );
 
-    // Активируем и связываем буфер нормалей
     gl.bindBuffer(gl.ARRAY_BUFFER, this.normalBuffer);
     gl.enableVertexAttribArray(this.attribLocations.normal);
     gl.vertexAttribPointer(
@@ -208,7 +193,7 @@ export class Object {
       0,
       0
     );
-    // Активируем и связываем буфер текстурных координат
+
     gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer);
     gl.enableVertexAttribArray(this.attribLocations.texcoord);
     gl.vertexAttribPointer(
@@ -219,7 +204,7 @@ export class Object {
       0,
       0
     );
-    // Устанавливаем uniform-переменные для матриц
+
     gl.uniform3fv(
       this.uniformLocations.reverseLightDirection,
       this.reverseLightDirection
@@ -237,15 +222,51 @@ export class Object {
     );
     gl.uniform1f(this.uniformLocations.time, timeInSeconds);
 
-    // Активируем текстуру
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.texture);
     gl.uniform1i(this.uniformLocations.texture, 0);
 
-    // Отрисовываем объект
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
     gl.drawElements(gl.TRIANGLES, this.vertexCount, gl.UNSIGNED_INT, 0);
   }
 
-  // ... draw() остаётся без изменений ...
+  static loadFromGLTF(gl, url, vert, frag, { scale, translate, rotate } = {}) {
+    const loader = new GLTFLoader();
+    return new Promise((resolve, reject) => {
+      loader.load(
+        url,
+        (gltf) => {
+          const meshes = [];
+          gltf.scene.traverse((child) => child.isMesh && meshes.push(child));
+          if (!meshes.length) return reject(new Error("Mesh not found"));
+
+          let objectList = [];
+          for (let m of meshes) {
+            console.log(m);
+            const geom = m.geometry;
+            const data = {
+              vertices: Array.from(geom.attributes.position.array),
+              normals: Array.from(geom.attributes.normal.array),
+              texCoords: Array.from(geom.attributes.uv.array),
+              indices: Array.from(geom.index.array),
+            };
+            const img = m.material.map?.image || null;
+
+            const obj = new Object(gl, img, data, vert, frag);
+            if (scale) obj.scale(...scale);
+            if (translate) obj.translate(...translate);
+            if (rotate) {
+              const [rx, ry, rz] = rotate.map((d) => (d * Math.PI) / 180);
+              obj.rotate(rx, ry, rz);
+            }
+            objectList.push(obj);
+          }
+
+          resolve(objectList);
+        },
+        undefined,
+        (err) => reject(err)
+      );
+    });
+  }
 }

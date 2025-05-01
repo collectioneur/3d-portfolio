@@ -24,14 +24,11 @@ const fragmentSource = `
   varying vec2 v_texcoord;
   uniform sampler2D u_texture;
 
-  float random(vec2 st) {
-    return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
-}
-
   void main() {
-  float noise = random(v_texcoord * 100.0);
   vec4 color = vec4(0.01, 0.03, 0.02, 1.0);
-  color.g += 0.05 * sin(10.0 * v_texcoord.x + 10.0 * v_texcoord.y);
+  vec2 texcoord = v_texcoord * 2.0 - 1.0;
+  color.g += 0.1 * max(0.5 - (texcoord.x * texcoord.x + texcoord.y * texcoord.y), 0.0);
+  color.r += 0.02 * max(0.5 - (texcoord.x * texcoord.x + texcoord.y * texcoord.y), 0.0);
     gl_FragColor = color;
   }
 `;
@@ -39,39 +36,13 @@ const fragmentSource = `
 export class Ground {
   constructor(gl) {
     const vertices = [
-      -1.0,
-      0.0,
-      -1.0, // левый ближний угол
-      1.0,
-      0.0,
-      -1.0, // правый ближний угол
-      1.0,
-      0.0,
-      1.0, // правый дальний угол
-      -1.0,
-      0.0,
-      1.0, // левый дальний угол
+      -100.0, 0.0, -100.0, 100.0, 0.0, -100.0, 100.0, 0.0, 100.0, -100.0, 0.0,
+      100.0,
     ];
 
-    const texCoords = [
-      0.0,
-      0.0, // для первого угла
-      1.0,
-      0.0, // для второго угла
-      1.0,
-      1.0, // для третьего угла
-      0.0,
-      1.0, // для четвёртого угла
-    ];
+    const texCoords = [0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0];
 
-    const indices = [
-      0,
-      1,
-      2, // первый треугольник
-      0,
-      2,
-      3, // второй треугольник
-    ];
+    const indices = [0, 1, 2, 0, 2, 3];
     this.gl = gl;
     this.modelMatrix = mat4.create();
 
@@ -103,7 +74,6 @@ export class Ground {
       view: gl.getUniformLocation(this.program, "u_view"),
       proj: gl.getUniformLocation(this.program, "u_proj"),
       texture: gl.getUniformLocation(this.program, "u_texture"),
-      time: gl.getUniformLocation(this.program, "u_time"),
     };
     this.texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, this.texture);
@@ -119,10 +89,6 @@ export class Ground {
       gl.UNSIGNED_BYTE,
       whitePixel
     );
-  }
-
-  scale(x, y, z) {
-    mat4.scale(this.modelMatrix, this.modelMatrix, [x, y, z]);
   }
 
   createProgram(gl, vsSource, fsSource) {
@@ -155,8 +121,6 @@ export class Ground {
     const gl = this.gl;
     gl.useProgram(this.program);
 
-    const now = performance.now();
-    const timeInSeconds = now / 1000.0;
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
     gl.enableVertexAttribArray(this.attribLocations.position);
     gl.vertexAttribPointer(
@@ -179,7 +143,6 @@ export class Ground {
       0
     );
 
-    // Устанавливаем uniform-переменные для матриц
     gl.uniformMatrix4fv(this.uniformLocations.model, false, this.modelMatrix);
     gl.uniformMatrix4fv(
       this.uniformLocations.view,
@@ -191,17 +154,12 @@ export class Ground {
       false,
       camera.getProjectionMatrix()
     );
-    gl.uniform1f(this.uniformLocations.time, timeInSeconds);
 
-    // Активируем текстуру
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.texture);
     gl.uniform1i(this.uniformLocations.texture, 0);
 
-    // Отрисовываем объект
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
     gl.drawElements(gl.TRIANGLES, this.vertexCount, gl.UNSIGNED_INT, 0);
   }
-
-  // ... draw() остаётся без изменений ...
 }
