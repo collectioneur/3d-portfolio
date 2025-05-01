@@ -5,7 +5,7 @@ export class Controls {
     this.camera = camera;
     this.canvas = canvas;
 
-    this.azimuth = -Math.PI / 6;
+    this.azimuth = -Math.PI / 4;
     this.elevation = Math.PI / 14 - 0.01;
 
     this.isDragging = false;

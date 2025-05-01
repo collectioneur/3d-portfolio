@@ -18,7 +18,7 @@ import {
   vertexSource as meVert,
 } from "./shaders/meShaders.js";
 
-let seed = 4000;
+let seed = 5000;
 function random() {
   let x = Math.sin(seed++) * 10000;
   return x - Math.floor(x);
@@ -98,8 +98,8 @@ let baobab = [];
     meFrag
   );
   me.scale(1.0, 1.0, 1.0);
-  me.translate(1.0, 0.5, 1.0);
-  me.rotate(0, 90, 0);
+  me.translate(1.2, 0.5, 1.2);
+  me.rotate(0, 110, 0);
   scene.addObject(me);
 })();
 
