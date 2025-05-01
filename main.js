@@ -48,7 +48,7 @@ let baobab = [];
 (async () => {
   baobab = await Object.loadFromGLTF(
     gl,
-    "../models/baobab.glb",
+    "/3d-portfolio/models/baobab.glb",
     baobabVert,
     baobabFrag
   );
@@ -71,7 +71,7 @@ let baobab = [];
 (async () => {
   const grass = await Object.loadFromGLTF(
     gl,
-    "../models/grass.glb",
+    "/3d-portfolio/models/grass.glb",
     grassVert,
     grassFrag
   );
@@ -93,7 +93,7 @@ let baobab = [];
 (async () => {
   const [me] = await Object.loadFromGLTF(
     gl,
-    "../models/me.glb",
+    "/3d-portfolio/models/me.glb",
     meVert,
     meFrag
   );
