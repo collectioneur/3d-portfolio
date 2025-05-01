@@ -72,6 +72,7 @@ export class Controls {
     this.canvas.addEventListener(
       "touchmove",
       (e) => {
+        e.preventDefault();
         if (this.isPinching && e.touches.length === 2) {
           const dist = this._touchDistance(e.touches[0], e.touches[1]);
           const delta = dist - this.lastDist;
