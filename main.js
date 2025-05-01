@@ -99,7 +99,7 @@ let baobab = [];
   );
   me.scale(1.0, 1.0, 1.0);
   me.translate(1.2, 0.5, 1.2);
-  me.rotate(0, 110, 0);
+  me.rotate(0, 90, 0);
   scene.addObject(me);
 })();
 
